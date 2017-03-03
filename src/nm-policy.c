@@ -91,6 +91,7 @@ typedef struct {
 	char *cur_hostname;  /* hostname we want to assign */
 	char *last_hostname; /* last hostname NM set (to detect if someone else changed it in the meanwhile) */
 	gboolean changing_hostname; /* hostname set operation still in progress */
+	gboolean dhcp_hostname; /* current hostname was set from dhcp */
 
 	GArray *ip6_prefix_delegations; /* pool of ip6 prefixes delegated to all devices */
 } NMPolicyPrivate;
@@ -607,6 +608,7 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 		external_hostname = TRUE;
 		_LOGI (LOGD_DNS, "current hostname was changed outside NetworkManager: '%s'",
 		       temp_hostname);
+		priv->dhcp_hostname = FALSE;
 
 		if (!nm_streq0 (temp_hostname, priv->orig_hostname)) {
 			/* Update original (fallback) hostname */
@@ -632,6 +634,7 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 	g_object_get (G_OBJECT (priv->manager), NM_MANAGER_HOSTNAME, &configured_hostname, NULL);
 	if (configured_hostname && nm_utils_is_specific_hostname (configured_hostname)) {
 		_set_hostname (self, configured_hostname, "from system configuration");
+		priv->dhcp_hostname = FALSE;
 		g_free (configured_hostname);
 		return;
 	}
@@ -655,6 +658,7 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 				while (*p) {
 					if (!g_ascii_isspace (*p++)) {
 						_set_hostname (self, p-1, "from DHCPv4");
+						priv->dhcp_hostname = TRUE;
 						return;
 					}
 				}
@@ -674,6 +678,7 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 				while (*p) {
 					if (!g_ascii_isspace (*p++)) {
 						_set_hostname (self, p-1, "from DHCPv6");
+						priv->dhcp_hostname = TRUE;
 						return;
 					}
 				}
@@ -687,8 +692,15 @@ update_system_hostname (NMPolicy *self, NMDevice *best4, NMDevice *best6)
 	if (external_hostname)
 		return;
 
-	if (priv->hostname_mode == NM_POLICY_HOSTNAME_MODE_DHCP)
+	if (priv->hostname_mode == NM_POLICY_HOSTNAME_MODE_DHCP) {
+		if (priv->dhcp_hostname) {
+			_set_hostname (self, priv->orig_hostname, "reset dhcp hostname");
+			priv->dhcp_hostname = FALSE;
+		}
 		return;
+	}
+
+	priv->dhcp_hostname = FALSE;
 
 	if (!best4 && !best6) {
 		/* No best device; fall back to the last hostname set externally
