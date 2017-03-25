@@ -5697,12 +5697,12 @@ should_complete_vpn_uuids (const char *prompt, const char *line)
 	return _get_and_check_property (prompt, line, uuid_properties, NULL, NULL);
 }
 
-static const char **
+static const char *const*
 get_allowed_property_values (void)
 {
 	NMSetting *setting;
 	char *property;
-	const char **avals = NULL;
+	const char *const*avals = NULL;
 
 	get_setting_and_property (rl_prompt, rl_line_buffer, &setting, &property);
 	if (setting && property)
@@ -5773,7 +5773,7 @@ static char *
 gen_property_values (const char *text, int state)
 {
 	char *ret = NULL;
-	const char **avals;
+	const char *const*avals;
 
 	avals = get_allowed_property_values ();
 	if (avals)
@@ -6654,7 +6654,8 @@ property_edit_submenu (NmCli *nmc,
 			 * single values:  : both SET and ADD sets the new value
 			 */
 			if (!cmd_property_arg) {
-				const char **avals = nmc_setting_get_property_allowed_values (curr_setting, prop_name);
+				const char *const*avals = nmc_setting_get_property_allowed_values (curr_setting, prop_name);
+
 				if (avals) {
 					char *avals_str = nmc_util_strv_for_display (avals, FALSE);
 					g_print (_("Allowed values for '%s' property: %s\n"),
@@ -7066,7 +7067,7 @@ editor_menu_main (NmCli *nmc, NMConnection *connection, const char *connection_t
 				if (menu_ctx.level == 1) {
 					const char *prop_name;
 					char *prop_val_user = NULL;
-					const char **avals;
+					const char *const*avals;
 					GError *tmp_err = NULL;
 
 					prop_name = ask_check_property (cmd_arg,
@@ -7133,7 +7134,7 @@ editor_menu_main (NmCli *nmc, NMConnection *connection, const char *connection_t
 
 				/* Ask for value */
 				if (!cmd_arg_v) {
-					const char **avals = nmc_setting_get_property_allowed_values (ss, prop_name);
+					const char *const*avals = nmc_setting_get_property_allowed_values (ss, prop_name);
 					if (avals) {
 						char *avals_str = nmc_util_strv_for_display (avals, FALSE);
 						g_print (_("Allowed values for '%s' property: %s\n"),
