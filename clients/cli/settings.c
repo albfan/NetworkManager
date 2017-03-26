@@ -144,6 +144,14 @@ _set_fcn_gobject_string (const NmcSettingInfo *setting_info,
                          const char *value,
                          GError **error)
 {
+	if (   property_info->property_typ_data
+	    && property_info->property_typ_data->values_static) {
+		value = nmc_string_is_valid (value,
+		                             (const char **) property_info->property_typ_data->values_static,
+		                             error);
+		if (!value)
+			return FALSE;
+	}
 	g_object_set (setting, property_info->property_name, value, NULL);
 	return TRUE;
 }
@@ -2034,47 +2042,6 @@ DEFINE_SETTER_PRIV_KEY (nmc_property_802_1X_set_phase2_private_key,
                         nm_setting_802_1x_get_phase2_private_key_password,
                         nm_setting_802_1x_set_phase2_private_key)
 
-static const char *_802_1X_valid_phase1_peapvers[] = { "0", "1", NULL };
-
-static gboolean
-nmc_property_802_1X_set_phase1_peapver (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, _802_1X_valid_phase1_peapvers, error);
-}
-
-/* 'phase1-peaplabel' */
-static const char *_802_1X_valid_phase1_peaplabels[] = { "0", "1", NULL };
-
-static gboolean
-nmc_property_802_1X_set_phase1_peaplabel (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, _802_1X_valid_phase1_peaplabels, error);
-}
-
-static const char *_802_1X_valid_phase1_fast_provisionings[] = { "0", "1", "2", "3", NULL };
-
-static gboolean
-nmc_property_802_1X_set_phase1_fast_provisioning (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, _802_1X_valid_phase1_fast_provisionings, error);
-}
-
-static const char *_802_1X_valid_phase2_auths[] =
-	{ "pap", "chap", "mschap", "mschapv2", "gtc", "otp", "md5", "tls", NULL };
-
-static gboolean
-nmc_property_802_1X_set_phase2_auth (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, _802_1X_valid_phase2_auths, error);
-}
-
-static const char *_802_1X_valid_phase2_autheaps[] = { "md5", "mschapv2", "otp", "gtc", "tls", NULL };
-static gboolean
-nmc_property_802_1X_set_phase2_autheap (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, _802_1X_valid_phase2_autheaps, error);
-}
-
 static gboolean
 nmc_property_802_1X_set_password_raw (NMSetting *setting, const char *prop, const char *val, GError **error)
 {
@@ -2131,32 +2098,6 @@ nmc_property_802_1X_set_phase1_auth_flags (NMSetting *setting, const char *prop,
 
 	g_object_set (setting, prop, (guint) flags, NULL);
 	return TRUE;
-}
-
-
-static const char *adsl_valid_protocols[] = {
-	NM_SETTING_ADSL_PROTOCOL_PPPOA,
-	NM_SETTING_ADSL_PROTOCOL_PPPOE,
-	NM_SETTING_ADSL_PROTOCOL_IPOATM,
-	NULL
-};
-
-static gboolean
-nmc_property_adsl_set_protocol (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, adsl_valid_protocols, error);
-}
-
-static const char *adsl_valid_encapsulations[] = {
-	NM_SETTING_ADSL_ENCAPSULATION_VCMUX,
-	NM_SETTING_ADSL_ENCAPSULATION_LLC,
-	NULL
-};
-
-static gboolean
-nmc_property_adsl_set_encapsulation (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, adsl_valid_encapsulations, error);
 }
 
 /* --- NM_SETTING_BLUETOOTH_SETTING_NAME property functions --- */
@@ -2513,19 +2454,6 @@ _set_fcn_connection_master (const NmcSettingInfo *setting_info,
 	return TRUE;
 }
 
-static const char *con_valid_slave_types[] = {
-	NM_SETTING_BOND_SETTING_NAME,
-	NM_SETTING_BRIDGE_SETTING_NAME,
-	NM_SETTING_TEAM_SETTING_NAME,
-	NULL
-};
-
-static gboolean
-nmc_property_con_set_slave_type (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, con_valid_slave_types, error);
-}
-
 static gboolean
 _set_fcn_connection_secondaries (const NmcSettingInfo *setting_info,
                                  const NmcPropertyInfo *property_info,
@@ -2823,7 +2751,6 @@ dcb_app_priority_to_string (gint priority)
 
 DEFINE_DCB_FLAGS_GETTER (nmc_property_dcb_get_app_fcoe_flags, NM_SETTING_DCB_APP_FCOE_FLAGS)
 DEFINE_DCB_APP_PRIORITY_GETTER (nmc_property_dcb_get_app_fcoe_priority, NM_SETTING_DCB_APP_FCOE_PRIORITY)
-DEFINE_GETTER (nmc_property_dcb_get_app_fcoe_mode, NM_SETTING_DCB_APP_FCOE_MODE)
 DEFINE_DCB_FLAGS_GETTER (nmc_property_dcb_get_app_iscsi_flags, NM_SETTING_DCB_APP_ISCSI_FLAGS)
 DEFINE_DCB_APP_PRIORITY_GETTER (nmc_property_dcb_get_app_iscsi_priority, NM_SETTING_DCB_APP_ISCSI_PRIORITY)
 DEFINE_DCB_FLAGS_GETTER (nmc_property_dcb_get_app_fip_flags, NM_SETTING_DCB_APP_FIP_FLAGS)
@@ -3082,17 +3009,6 @@ nmc_property_dcb_set_pg_traffic_class (NMSetting *setting, const char *prop, con
 
 	dcb_check_feature_enabled (NM_SETTING_DCB (setting), NM_SETTING_DCB_PRIORITY_GROUP_FLAGS);
 	return TRUE;
-}
-
-/* 'app-fcoe-mode' */
-static const char *_dcb_valid_fcoe_modes[] = { NM_SETTING_DCB_FCOE_MODE_FABRIC,
-                                               NM_SETTING_DCB_FCOE_MODE_VN2VN,
-                                               NULL };
-
-static gboolean
-nmc_property_dcb_set_app_fcoe_mode (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, _dcb_valid_fcoe_modes, error);
 }
 
 /* --- NM_SETTING_GSM_SETTING_NAME property functions --- */
@@ -5198,24 +5114,6 @@ nmc_property_wifi_sec_get_wep_key_type (NMSetting *setting, NmcPropertyGetType g
 {
 	NMSettingWirelessSecurity *s_wireless_sec = NM_SETTING_WIRELESS_SECURITY (setting);
 	return wep_key_type_to_string (nm_setting_wireless_security_get_wep_key_type (s_wireless_sec));
-}
-
-/* 'key-mgmt' */
-static const char *wifi_sec_valid_key_mgmts[] = { "none", "ieee8021x", "wpa-none", "wpa-psk", "wpa-eap", NULL };
-
-static gboolean
-nmc_property_wifi_sec_set_key_mgmt (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, wifi_sec_valid_key_mgmts, error);
-}
-
-/* 'auth-alg' */
-static const char *wifi_sec_valid_auth_algs[] = { "open", "shared", "leap", NULL };
-
-static gboolean
-nmc_property_wifi_sec_set_auth_alg (NMSetting *setting, const char *prop, const char *val, GError **error)
-{
-	return check_and_set_string (setting, prop, val, wifi_sec_valid_auth_algs, error);
 }
 
 /* 'proto' */
@@ -8155,35 +8053,23 @@ static const NmcPropertyInfo properties_setting_802_1x[] = {
 	},
 	{
 		.property_name =                N_ (NM_SETTING_802_1X_PHASE1_PEAPVER),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            _802_1X_valid_phase1_peapvers,
-			.set_fcn =                  nmc_property_802_1X_set_phase1_peapver,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC ("0", "1"),
 		),
 	},
 	{
 		.property_name =                N_ (NM_SETTING_802_1X_PHASE1_PEAPLABEL),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            _802_1X_valid_phase1_peaplabels,
-			.set_fcn =                  nmc_property_802_1X_set_phase1_peaplabel,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC ("0", "1"),
 		),
 	},
 	{
 		.property_name =                N_ (NM_SETTING_802_1X_PHASE1_FAST_PROVISIONING),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            _802_1X_valid_phase1_fast_provisionings,
-			.set_fcn =                  nmc_property_802_1X_set_phase1_fast_provisioning,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC ("0", "1", "2", "3"),
 		),
 	},
 	{
@@ -8196,24 +8082,16 @@ static const NmcPropertyInfo properties_setting_802_1x[] = {
 	},
 	{
 		.property_name =                N_ (NM_SETTING_802_1X_PHASE2_AUTH),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            _802_1X_valid_phase2_auths,
-			.set_fcn =                  nmc_property_802_1X_set_phase2_auth,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC ("pap", "chap", "mschap", "mschapv2", "gtc", "otp", "md5", "tls"),
 		),
 	},
 	{
 		.property_name =                N_ (NM_SETTING_802_1X_PHASE2_AUTHEAP),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            _802_1X_valid_phase2_autheaps,
-			.set_fcn =                  nmc_property_802_1X_set_phase2_autheap,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC ("md5", "mschapv2", "otp", "gtc", "tls"),
 		),
 	},
 	{
@@ -8396,24 +8274,19 @@ static const NmcPropertyInfo properties_setting_adsl[] = {
 	},
 	{
 		.property_name =                N_ (NM_SETTING_ADSL_PROTOCOL),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            adsl_valid_protocols,
-			.set_fcn =                  nmc_property_adsl_set_protocol,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC (NM_SETTING_ADSL_PROTOCOL_PPPOA,
+			                                           NM_SETTING_ADSL_PROTOCOL_PPPOE,
+			                                           NM_SETTING_ADSL_PROTOCOL_IPOATM),
 		),
 	},
 	{
 		.property_name =                N_ (NM_SETTING_ADSL_ENCAPSULATION),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            adsl_valid_encapsulations,
-			.set_fcn =                  nmc_property_adsl_set_encapsulation,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC (NM_SETTING_ADSL_ENCAPSULATION_VCMUX,
+			                                           NM_SETTING_ADSL_ENCAPSULATION_LLC),
 		),
 	},
 	{
@@ -8513,13 +8386,11 @@ static const NmcPropertyInfo properties_setting_connection[] = {
 	},
 	{
 		.property_name =                N_ (NM_SETTING_CONNECTION_SLAVE_TYPE),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            con_valid_slave_types,
-			.set_fcn =                  nmc_property_con_set_slave_type,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC (NM_SETTING_BOND_SETTING_NAME,
+			                                           NM_SETTING_BRIDGE_SETTING_NAME,
+			                                           NM_SETTING_TEAM_SETTING_NAME),
 		),
 	},
 	{
@@ -8604,11 +8475,10 @@ static const NmcPropertyInfo properties_setting_dcb[] = {
 	},
 	{
 		.property_name =                N_ (NM_SETTING_DCB_APP_FCOE_MODE),
-		.property_type =                &_pt_nmc_getset,
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            _dcb_valid_fcoe_modes,
-			.get_fcn =                  nmc_property_dcb_get_app_fcoe_mode,
-			.set_fcn =                  nmc_property_dcb_set_app_fcoe_mode,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC (NM_SETTING_DCB_FCOE_MODE_FABRIC,
+			                                           NM_SETTING_DCB_FCOE_MODE_VN2VN),
 		),
 	},
 	{
@@ -9146,13 +9016,9 @@ static const NmcPropertyInfo properties_setting_wireless_security[] = {
 	PROPERTY_INFO_NAME(),
 	{
 		.property_name =                N_ (NM_SETTING_WIRELESS_SECURITY_KEY_MGMT),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            wifi_sec_valid_key_mgmts,
-			.set_fcn =                  nmc_property_wifi_sec_set_key_mgmt,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC ("none", "ieee8021x", "wpa-none", "wpa-psk", "wpa-eap"),
 		),
 	},
 	{
@@ -9161,13 +9027,9 @@ static const NmcPropertyInfo properties_setting_wireless_security[] = {
 	},
 	{
 		.property_name =                N_ (NM_SETTING_WIRELESS_SECURITY_AUTH_ALG),
-		.property_type = DEFINE_PROPERTY_TYPE (
-			.get_fcn =                  _get_fcn_gobject,
-			.set_fcn =                  _set_fcn_nmc,
-		),
-		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_WITH_ARG1 (nmc,
-			.values_static =            wifi_sec_valid_auth_algs,
-			.set_fcn =                  nmc_property_wifi_sec_set_auth_alg,
+		.property_type =                &_pt_gobject_string,
+		.property_typ_data = DEFINE_PROPERTY_TYP_DATA (
+			.values_static =            VALUES_STATIC ("open", "shared", "leap"),
 		),
 	},
 	{
