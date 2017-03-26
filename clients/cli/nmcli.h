@@ -110,7 +110,7 @@ typedef struct _NmcOutputField {
 	const char *name;               /* Field's name */
 	const char *name_l10n;          /* Field's name for translation */
 	int width;                      /* Width in screen columns */
-	const struct _NmcOutputField *group_list; /* Points to an array with available section field names if this is a section (group) field */
+	const struct _NmcOutputField *__group_list; /* FIXME: unused */
 	void *value;                    /* Value of current field - char* or char** (NULL-terminated array) */
 	gboolean value_is_array;        /* Whether value is char** instead of char* */
 	gboolean free_value;            /* Whether to free the value */
