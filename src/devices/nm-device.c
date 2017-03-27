@@ -1480,6 +1480,17 @@ nm_device_get_priority (NMDevice *self)
 	return 11000;
 }
 
+static int
+default_route_penalty (NMDevice *self)
+{
+	NMDevicePrivate *priv = NM_DEVICE_GET_PRIVATE (self);
+
+	if (priv->connectivity_state != NM_CONNECTIVITY_FULL)
+		return 20000;
+	else
+		return 0;
+}
+
 static guint32
 _get_ipx_route_metric (NMDevice *self,
                        gboolean is_v4)
@@ -1727,6 +1738,11 @@ update_connectivity_state (NMDevice *self, NMConnectivityState state)
 		       nm_connectivity_state_to_string (state));
 		priv->connectivity_state = state;
 		_notify (self, PROP_CONNECTIVITY);
+
+		if (!ip4_config_merge_and_apply (self, NULL, TRUE))
+			_LOGW (LOGD_IP4, "Failed to update IPv4 default route metric");
+		if (!ip6_config_merge_and_apply (self, TRUE))
+			_LOGW (LOGD_IP6, "Failed to update IPv6 default route metric");
 	}
 }
 #endif
@@ -5491,7 +5507,7 @@ ip4_config_merge_and_apply (NMDevice *self,
 	memset (&priv->default_route.v4, 0, sizeof (priv->default_route.v4));
 	priv->default_route.v4.rt_source = NM_IP_CONFIG_SOURCE_USER;
 	priv->default_route.v4.gateway = gateway;
-	priv->default_route.v4.metric = default_route_metric;
+	priv->default_route.v4.metric = default_route_metric + default_route_penalty (self);
 	priv->default_route.v4.mss = nm_ip4_config_get_mss (composite);
 
 	if (!has_direct_route) {
@@ -6238,7 +6254,7 @@ ip6_config_merge_and_apply (NMDevice *self,
 	memset (&priv->default_route.v6, 0, sizeof (priv->default_route.v6));
 	priv->default_route.v6.rt_source = NM_IP_CONFIG_SOURCE_USER;
 	priv->default_route.v6.gateway = *gateway;
-	priv->default_route.v6.metric = nm_device_get_ip6_route_metric (self);
+	priv->default_route.v6.metric = nm_device_get_ip6_route_metric (self) + default_route_penalty (self);
 	priv->default_route.v6.mss = nm_ip6_config_get_mss (composite);
 
 	if (!has_direct_route) {
