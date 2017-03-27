@@ -43,13 +43,15 @@ static char *secret_flags_to_string (guint32 flags, NmcPropertyGetType get_type)
 	 NM_SETTING_SECRET_FLAG_NOT_SAVED | \
 	 NM_SETTING_SECRET_FLAG_NOT_REQUIRED)
 
+#define HIDDEN_TEXT "<hidden>"
+
 /*****************************************************************************/
 
 #define ARGS_DESCRIBE_FCN \
 	const NmcSettingInfo *setting_info, const NmcPropertyInfo *property_info
 
 #define ARGS_GET_FCN \
-	const NmcSettingInfo *setting_info, const NmcPropertyInfo *property_info, NMSetting *setting, NmcPropertyGetType get_type
+	const NmcSettingInfo *setting_info, const NmcPropertyInfo *property_info, NMSetting *setting, NmcPropertyGetType get_type, gboolean show_secrets
 
 #define ARGS_SET_FCN \
 	const NmcSettingInfo *setting_info, const NmcPropertyInfo *property_info, NMSetting *setting, const char *value, GError **error
@@ -117,7 +119,7 @@ _get_fcn_gobject_mtu (ARGS_GET_FCN)
 
 	if (   !property_info->property_typ_data
 	    || !property_info->property_typ_data->mtu.get_fcn)
-		return _get_fcn_gobject (setting_info, property_info, setting, get_type);
+		return _get_fcn_gobject (setting_info, property_info, setting, get_type, show_secrets);
 
 	mtu = property_info->property_typ_data->mtu.get_fcn (setting);
 	if (mtu == 0) {
@@ -1113,9 +1115,7 @@ nmc_property_802_1X_get_ca_cert (NMSetting *setting, NmcPropertyGetType get_type
 }
 
 static char *
-nmc_property_802_1X_get_client_cert (NMSetting *setting,
-                                     NmcPropertyGetType get_type,
-                                     gboolean show_secrets)
+_get_fcn_802_1x_client_cert (ARGS_GET_FCN)
 {
 	NMSetting8021x *s_8021X = NM_SETTING_802_1X (setting);
 	char *cert_str = NULL;
@@ -1125,7 +1125,7 @@ nmc_property_802_1X_get_client_cert (NMSetting *setting,
 		if (show_secrets)
 			cert_str = bytes_to_string (nm_setting_802_1x_get_client_cert_blob (s_8021X));
 		else
-			cert_str = g_strdup (_("<hidden>"));
+			cert_str = g_strdup (_(HIDDEN_TEXT));
 		break;
 	case NM_SETTING_802_1X_CK_SCHEME_PATH:
 		cert_str = g_strdup (nm_setting_802_1x_get_client_cert_path (s_8021X));
@@ -1138,12 +1138,6 @@ nmc_property_802_1X_get_client_cert (NMSetting *setting,
 	}
 
 	return cert_str;
-}
-
-static char *
-nmc_property_802_1X_get_client_cert_full (NMSetting *setting, NmcPropertyGetType get_type)
-{
-	return nmc_property_802_1X_get_client_cert (setting, get_type, TRUE);
 }
 
 static char *
@@ -1170,9 +1164,7 @@ nmc_property_802_1X_get_phase2_ca_cert (NMSetting *setting, NmcPropertyGetType g
 }
 
 static char *
-nmc_property_802_1X_get_phase2_client_cert (NMSetting *setting,
-                                            NmcPropertyGetType get_type,
-                                            gboolean show_secrets)
+_get_fcn_802_1x_phase2_client_cert (ARGS_GET_FCN)
 {
 	NMSetting8021x *s_8021X = NM_SETTING_802_1X (setting);
 	char *cert_str = NULL;
@@ -1182,7 +1174,7 @@ nmc_property_802_1X_get_phase2_client_cert (NMSetting *setting,
 		if (show_secrets)
 			cert_str = bytes_to_string (nm_setting_802_1x_get_phase2_client_cert_blob (s_8021X));
 		else
-			cert_str = g_strdup (_("<hidden>"));
+			cert_str = g_strdup (_(HIDDEN_TEXT));
 		break;
 	case NM_SETTING_802_1X_CK_SCHEME_PATH:
 		cert_str = g_strdup (nm_setting_802_1x_get_phase2_client_cert_path (s_8021X));
@@ -1198,12 +1190,6 @@ nmc_property_802_1X_get_phase2_client_cert (NMSetting *setting,
 }
 
 static char *
-nmc_property_802_1X_get_phase2_client_cert_full (NMSetting *setting, NmcPropertyGetType get_type)
-{
-	return nmc_property_802_1X_get_phase2_client_cert (setting, get_type, TRUE);
-}
-
-static char *
 nmc_property_802_1X_get_password_raw (NMSetting *setting, NmcPropertyGetType get_type)
 {
 	NMSetting8021x *s_8021X = NM_SETTING_802_1X (setting);
@@ -1211,9 +1197,7 @@ nmc_property_802_1X_get_password_raw (NMSetting *setting, NmcPropertyGetType get
 }
 
 static char *
-nmc_property_802_1X_get_private_key (NMSetting *setting,
-                                     NmcPropertyGetType get_type,
-                                     gboolean show_secrets)
+_get_fcn_802_1x_private_key (ARGS_GET_FCN)
 {
 	NMSetting8021x *s_8021X = NM_SETTING_802_1X (setting);
 	char *key_str = NULL;
@@ -1223,7 +1207,7 @@ nmc_property_802_1X_get_private_key (NMSetting *setting,
 		if (show_secrets)
 			key_str = bytes_to_string (nm_setting_802_1x_get_private_key_blob (s_8021X));
 		else
-			key_str = g_strdup (_("<hidden>"));
+			key_str = g_strdup (_(HIDDEN_TEXT));
 		break;
 	case NM_SETTING_802_1X_CK_SCHEME_PATH:
 		key_str = g_strdup (nm_setting_802_1x_get_private_key_path (s_8021X));
@@ -1239,15 +1223,7 @@ nmc_property_802_1X_get_private_key (NMSetting *setting,
 }
 
 static char *
-nmc_property_802_1X_get_private_key_full (NMSetting *setting, NmcPropertyGetType get_type)
-{
-	return nmc_property_802_1X_get_private_key (setting, get_type, TRUE);
-}
-
-static char *
-nmc_property_802_1X_get_phase2_private_key (NMSetting *setting,
-                                            NmcPropertyGetType get_type,
-                                            gboolean show_secrets)
+_get_fcn_802_1x_phase2_private_key (ARGS_GET_FCN)
 {
 	NMSetting8021x *s_8021X = NM_SETTING_802_1X (setting);
 	char *key_str = NULL;
@@ -1257,7 +1233,7 @@ nmc_property_802_1X_get_phase2_private_key (NMSetting *setting,
 		if (show_secrets)
 			key_str = bytes_to_string (nm_setting_802_1x_get_phase2_private_key_blob (s_8021X));
 		else
-			key_str = g_strdup (_("<hidden>"));
+			key_str = g_strdup (_(HIDDEN_TEXT));
 		break;
 	case NM_SETTING_802_1X_CK_SCHEME_PATH:
 		key_str = g_strdup (nm_setting_802_1x_get_phase2_private_key_path (s_8021X));
@@ -1270,12 +1246,6 @@ nmc_property_802_1X_get_phase2_private_key (NMSetting *setting,
 	}
 
 	return key_str;
-}
-
-static char *
-nmc_property_802_1X_get_phase2_private_key_full (NMSetting *setting, NmcPropertyGetType get_type)
-{
-	return nmc_property_802_1X_get_phase2_private_key (setting, get_type, TRUE);
 }
 
 #define DEFINE_SETTER_STR_LIST(def_func, set_func) \
@@ -4632,7 +4602,7 @@ nmc_setting_custom_init (NMSetting *setting)
 /*****************************************************************************/
 
 static char *
-get_property_val (NMSetting *setting, const char *prop, NmcPropertyGetType get_type, GError **error)
+get_property_val (NMSetting *setting, const char *prop, NmcPropertyGetType get_type, gboolean show_secrets, GError **error)
 {
 	const NmcSettingInfo *setting_info;
 	const NmcPropertyInfo *property_info;
@@ -4650,7 +4620,8 @@ get_property_val (NMSetting *setting, const char *prop, NmcPropertyGetType get_t
 			return property_info->property_type->get_fcn (setting_info,
 			                                              property_info,
 			                                              setting,
-			                                              get_type);
+			                                              get_type,
+			                                              show_secrets);
 		}
 	}
 
@@ -4668,7 +4639,7 @@ get_property_val (NMSetting *setting, const char *prop, NmcPropertyGetType get_t
 char *
 nmc_setting_get_property (NMSetting *setting, const char *prop, GError **error)
 {
-	return get_property_val (setting, prop, NMC_PROPERTY_GET_PRETTY, error);
+	return get_property_val (setting, prop, NMC_PROPERTY_GET_PRETTY, TRUE, error);
 }
 
 /*
@@ -4678,7 +4649,7 @@ nmc_setting_get_property (NMSetting *setting, const char *prop, GError **error)
 char *
 nmc_setting_get_property_parsable (NMSetting *setting, const char *prop, GError **error)
 {
-	return get_property_val (setting, prop, NMC_PROPERTY_GET_PARSABLE, error);
+	return get_property_val (setting, prop, NMC_PROPERTY_GET_PARSABLE, TRUE, error);
 }
 
 /*
@@ -4966,7 +4937,7 @@ _all_properties (const NmcSettingInfo *setting_info)
 }
 
 gboolean
-setting_details (NMSetting *setting, NmCli *nmc, const char *one_prop, gboolean secrets)
+setting_details (NMSetting *setting, NmCli *nmc, const char *one_prop, gboolean show_secrets)
 {
 	const NMMetaSettingInfo *meta_setting_info;
 	const NmcSettingInfo *setting_info;
@@ -4998,13 +4969,14 @@ setting_details (NMSetting *setting, NmCli *nmc, const char *one_prop, gboolean 
 	for (i = 0; i < setting_info->properties_num; i++) {
 		const NmcPropertyInfo *property_info = &setting_info->properties[i];
 
-		if (!property_info->is_secret || secrets) {
+		if (!property_info->is_secret || show_secrets) {
 			set_val_str (arr, i, property_info->property_type->get_fcn (setting_info,
 			                                                            property_info,
 			                                                            setting,
-			                                                            NMC_PROPERTY_GET_PRETTY));
+			                                                            NMC_PROPERTY_GET_PRETTY,
+			                                                            show_secrets));
 		} else
-			set_val_str (arr, i, g_strdup (_("<hidden>")));
+			set_val_str (arr, i, g_strdup (_(HIDDEN_TEXT)));
 	}
 
 	g_ptr_array_add (nmc->output_data, arr);
@@ -5195,9 +5167,11 @@ static const NmcPropertyInfo properties_setting_802_1x[] = {
 		         "  [file://]<file path>\n"
 		         "Note that nmcli does not support specifying certificates as raw blob data.\n"
 		         "Example: /home/cimrman/jara.crt\n"),
-		.property_type =                &_pt_nmc_getset,
+		.property_type = DEFINE_PROPERTY_TYPE (
+			.get_fcn =                  _get_fcn_802_1x_client_cert,
+			.set_fcn =                  _set_fcn_nmc,
+		),
 		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_SUBTYPE (nmc,
-			.get_fcn =                  nmc_property_802_1X_get_client_cert_full,
 			.set_fcn =                  nmc_property_802_1X_set_client_cert,
 		),
 	},
@@ -5308,9 +5282,11 @@ static const NmcPropertyInfo properties_setting_802_1x[] = {
 		        "  [file://]<file path>\n"
 		        "Note that nmcli does not support specifying certificates as raw blob data.\n"
 		        "Example: /home/cimrman/jara-zweite-phase.crt\n"),
-		.property_type =                &_pt_nmc_getset,
+		.property_type = DEFINE_PROPERTY_TYPE (
+			.get_fcn =                  _get_fcn_802_1x_phase2_client_cert,
+			.set_fcn =                  _set_fcn_nmc,
+		),
 		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_SUBTYPE (nmc,
-			.get_fcn =                  nmc_property_802_1X_get_phase2_client_cert_full,
 			.set_fcn =                  nmc_property_802_1X_set_phase2_client_cert,
 		),
 	},
@@ -5360,9 +5336,11 @@ static const NmcPropertyInfo properties_setting_802_1x[] = {
 		        "  [file://]<file path> [<password>]\n"
 		        "Note that nmcli does not support specifying private key as raw blob data.\n"
 		        "Example: /home/cimrman/jara-priv-key Dardanely\n"),
-		.property_type =                &_pt_nmc_getset,
+		.property_type = DEFINE_PROPERTY_TYPE (
+			.get_fcn =                  _get_fcn_802_1x_private_key,
+			.set_fcn =                  _set_fcn_nmc,
+		),
 		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_SUBTYPE (nmc,
-			.get_fcn =                  nmc_property_802_1X_get_private_key_full,
 			.set_fcn =                  nmc_property_802_1X_set_private_key,
 		),
 	},
@@ -5382,9 +5360,11 @@ static const NmcPropertyInfo properties_setting_802_1x[] = {
 		        "  [file://]<file path> [<password>]\n"
 		        "Note that nmcli does not support specifying private key as raw blob data.\n"
 		        "Example: /home/cimrman/jara-priv-key Dardanely\n"),
-		.property_type =                &_pt_nmc_getset,
+		.property_type = DEFINE_PROPERTY_TYPE (
+			.get_fcn =                  _get_fcn_802_1x_phase2_private_key,
+			.set_fcn =                  _set_fcn_nmc,
+		),
 		.property_typ_data = DEFINE_PROPERTY_TYP_DATA_SUBTYPE (nmc,
-			.get_fcn =                  nmc_property_802_1X_get_phase2_private_key_full,
 			.set_fcn =                  nmc_property_802_1X_set_phase2_private_key,
 		),
 	},
